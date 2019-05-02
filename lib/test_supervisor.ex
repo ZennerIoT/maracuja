@@ -1,4 +1,4 @@
-defmodule Singleton.TestSupervisor do
+defmodule Maracuja.TestSupervisor do
   use Supervisor
 
   def start_link() do
@@ -7,7 +7,7 @@ defmodule Singleton.TestSupervisor do
 
   def init(:ok) do
     children = [
-      worker(Singleton.TestProcess, [])
+      worker(Maracuja.TestProcess, [])
     ]
 
     opts = [strategy: :one_for_one]

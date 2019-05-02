@@ -1,9 +1,9 @@
-defmodule Singleton.TestProcess do
+defmodule Maracuja.TestProcess do
   use GenServer
 
   @spec start_link() :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link do
-    Singleton.Wrapper.start_link(__MODULE__, :ok, :test_process)
+    Maracuja.start_link(__MODULE__, :ok, :test_process)
   end
 
   @spec init(:ok) :: {:ok, nil}

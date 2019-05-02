@@ -1,4 +1,4 @@
-defmodule SingletonTest do
+defmodule MaracujaTest do
   use ExUnit.Case, async: false
   require Logger
 
@@ -51,9 +51,9 @@ defmodule SingletonTest do
     {:ok, nodes} = start_nodes()
     [node1, node2] = nodes
 
-    {agents, []} = :rpc.multicall(Agent, :start, [Singleton.TestSupervisor, :start_link, []])
+    {agents, []} = :rpc.multicall(Agent, :start, [Maracuja.TestSupervisor, :start_link, []])
     IO.inspect agents
-    IO.inspect(:rpc.multicall(Process, :whereis, [Singleton.Wrapper.process_name(@global_name)]))
+    IO.inspect(:rpc.multicall(Process, :whereis, [Maracuja.process_name(@global_name)]))
 
     clear_leader_records()
 
@@ -100,7 +100,7 @@ defmodule SingletonTest do
     assert node(pid) == leader
 
     assert {[pid, pid, pid], []} = :rpc.multicall(:global, :whereis_name, [@global_name])
-    case :rpc.multicall(Singleton.Wrapper, :get_state, [@global_name]) do
+    case :rpc.multicall(Maracuja, :get_state, [@global_name]) do
       {[hosting: pid, monitoring: pid, monitoring: pid], []} -> assert true
       {[monitoring: pid, hosting: pid, monitoring: pid], []} -> assert true
       {[monitoring: pid, monitoring: pid, hosting: pid], []} -> assert true
@@ -109,7 +109,7 @@ defmodule SingletonTest do
   end
 
   test "hosting wrapper handles crashes" do
-    Singleton.TestSupervisor.start_link()
+    Maracuja.TestSupervisor.start_link()
 
     send :global.whereis_name(@global_name), :smth
     Process.sleep(610)
@@ -135,7 +135,7 @@ defmodule SingletonTest do
 
   def get_current_leaders() do
     with_lock(fn ->
-      file = Singleton.TestProcess.leader_file()
+      file = Maracuja.TestProcess.leader_file()
       if File.exists?(file) do
         file
         |> File.read!()
@@ -151,7 +151,7 @@ defmodule SingletonTest do
 
   def clear_leader_records() do
     with_lock(fn ->
-      file = Singleton.TestProcess.leader_file()
+      file = Maracuja.TestProcess.leader_file()
       if File.exists? file do
         File.rm! file
       end

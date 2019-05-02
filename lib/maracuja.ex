@@ -1,4 +1,4 @@
-defmodule Singleton.Wrapper do
+defmodule Maracuja do
   @behaviour :gen_statem
   require Logger
 
@@ -10,6 +10,7 @@ defmodule Singleton.Wrapper do
     :gen_statem.start_link({:local, process_name(global_name)}, __MODULE__, {module, args, global_name}, [])
   end
 
+  @doc false
   def init({mod, args, name}) do
     # monitor node joins and leaves
     :net_kernel.monitor_nodes(true)
@@ -25,18 +26,22 @@ defmodule Singleton.Wrapper do
     {:ok, state, data}
   end
 
+  @doc false
   def process_name(global_name) do
     :"#{global_name}_wrapper"
   end
 
+  @doc false
   def get_state(global_name) do
     :gen_statem.call(process_name(global_name), :get_state)
   end
 
+  @doc false
   def callback_mode() do
     [:handle_event_function, :state_enter]
   end
 
+  @doc false
   def handle_event(:enter, old_state, state, data) do
     Logger.debug("[#{Node.self()}] global wrapper for #{data.name} changed state: #{old_state} -> #{state}")
     {:keep_state, data}
@@ -156,14 +161,17 @@ defmodule Singleton.Wrapper do
 
   # UTILS
 
+  @doc false
   def has_majority?(data) do
     count_nodes() > data.maxnodes / 2
   end
 
+  @doc false
   def count_nodes() do
     length(Node.list()) + 1
   end
 
+  @doc false
   def update_maxnodes(data) do
     new_count = max(data.maxnodes, count_nodes())
     %{data | maxnodes: new_count}
