@@ -33,12 +33,19 @@ experience net splits and don't recover quickly from them.
 
 In the `start_link` callback of your GenServer, instead of directly using the `GenServer` module to start the server, use `Maracuja.start_link/3`:
 
+The `Maracuja` will call your module with `start_server/2` when it has decided to start the module in this 
+cluster.
+
 ```elixir
 def MySingleton do
   use GenServer
 
   def start_link(args) do
     Maracuja.start_link(__MODULE__, args, :my_global_name)
+  end
+
+  def start_server(args, name) do
+    GenServer.start_link(__MODULE__, args, name: name)
   end
 
   # init and rest of the server
@@ -57,7 +64,7 @@ In the case the cluster is experiencing a net split and the current node is part
 
 ## Planned features
 
- - [ ] Support for other behaviours 
+ - [x] Support for other behaviours 
  - [ ] Maybe support for other coping strategies
 
 ## Installation
@@ -68,7 +75,7 @@ to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:maracuja, "~> 0.1.0"}
+    {:maracuja, "~> 0.2.0"}
   ]
 end
 ```
