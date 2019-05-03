@@ -1,9 +1,14 @@
 defmodule Maracuja.TestProcess do
   use GenServer
+  @behaviour Maracuja
 
   @spec start_link() :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link do
     Maracuja.start_link(__MODULE__, :ok, :test_process)
+  end
+
+  def start_server(args, name) do
+    GenServer.start_link(__MODULE__, args, [name: name])
   end
 
   @spec init(:ok) :: {:ok, nil}

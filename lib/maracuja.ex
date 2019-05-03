@@ -2,10 +2,38 @@ defmodule Maracuja do
   @behaviour :gen_statem
   require Logger
 
+  @type args :: term
+  @type name :: atom
+
+  @doc """
+  Called when the wrapper wants the server to be started. The name argument
+  already uses the :global registry, simply pass this to the underlying server
+  module's opts argument.
+
+  Example if using a GenServer:
+  ```
+  def start_server(args, name) do
+    GenServer.start_link(__MODULE__, args, [name: name])
+  end
+  ```
+  """
+  @callback start_server(args, name :: {:global, name}) :: {:ok, pid}
+    | {:error, {:already_started, pid}}
+    | {:error, any}
+
   defmodule Data do
+    @moduledoc false
     defstruct pid: nil, mod: nil, args: nil, name: nil, maxnodes: 1, monitor: nil, leader_node: nil
   end
 
+  @doc """
+  Starts the Maracuja singleton wrapper. It will decide whether to start the actual instance using the
+  global name registry.
+
+  Whenever the wrapper wants to start the singleton, it will call the
+  `start_server/2` callback.
+  """
+  @spec start_link(module, args, name) :: {:ok, pid} | {:error, any} | :ignore
   def start_link(module, args, global_name) do
     :gen_statem.start_link({:local, process_name(global_name)}, __MODULE__, {module, args, global_name}, [])
   end
@@ -109,7 +137,8 @@ defmodule Maracuja do
     |> Enum.random()
     |> Process.sleep()
 
-    start_result = GenServer.start_link(data.mod, data.args, [name: {:global, data.name}])
+    name = {:global, data.name}
+    start_result = data.mod.start_server(data.args, name)
     case start_result do
       {:ok, pid} ->
         Process.link(pid)
