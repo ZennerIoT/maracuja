@@ -23,7 +23,7 @@ defmodule Maracuja do
 
   defmodule Data do
     @moduledoc false
-    defstruct pid: nil, mod: nil, args: nil, name: nil, maxnodes: 1, monitor: nil, leader_node: nil
+    defstruct pid: nil, mod: nil, args: nil, name: nil, maxnodes: 1, monitor: nil, leader_node: nil, demote_timer: nil
   end
 
   @doc """
@@ -72,7 +72,15 @@ defmodule Maracuja do
   @doc false
   def handle_event(:enter, old_state, state, data) do
     Logger.debug("[#{Node.self()}] global wrapper for #{data.name} changed state: #{old_state} -> #{state}")
-    {:keep_state, data}
+    if old_state == :hosting do
+      :timer.cancel(data.demote_timer)
+    end
+    if state == :hosting do
+      {:ok, ref} = :timer.send_interval(1000, :demote_other_hosts)
+      {:keep_state, %{data | demote_timer: ref}}
+    else
+      {:keep_state, data}
+    end
   end
 
   def handle_event(:info, {:EXIT, _, :normal}, :monitoring, data) do
@@ -109,6 +117,22 @@ defmodule Maracuja do
     data = update_maxnodes(data)
     Logger.debug("[#{Node.self()}] nodeup in state #{state}, #{count_nodes()} / #{data.maxnodes}")
     {:keep_state, data}
+  end
+
+  def handle_event(:info, :demote_other_hosts, :hosting, data) do
+    :erpc.multicall(Node.list(), fn ->
+      send(data.name, {:demote, data.pid})
+    end)
+
+    {:keep_state, data}
+  end
+
+  def handle_event(:info, {:demote, pid}, :hosting, data) do
+    Logger.info("[#{Node.self()}] demoted by #{node(pid)}")
+    Process.unlink(data.pid)
+    Process.exit(data.pid, :net_split)
+    ref = Process.monitor(pid)
+    {:next_state, :monitoring, %{data | pid: pid, monitor: ref, leader_node: node(pid)}}
   end
 
   def handle_event(:info, other, state, data) do
@@ -150,7 +174,7 @@ defmodule Maracuja do
   end
 
   @doc """
-  handle_stop reacts to :nodedown infos in the states :monitoring and :hosting
+  maybe_stop reacts to :nodedown infos in the states :monitoring and :hosting
 
   It will decide if the current amount of connected nodes implies a net split.
 
@@ -173,7 +197,7 @@ defmodule Maracuja do
   end
 
   @doc """
-  handle_start reacts to nodeup infos when in state :net_split, as well as
+  maybe_start reacts to nodeup infos when in state :net_split, as well as
   to nodedown infos when in state :monitoring and the disconnected node was the old leader_node
 
   When it has verified that the net split is over or at least a majority of the nodes are in the current
